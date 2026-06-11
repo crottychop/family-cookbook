@@ -69,13 +69,8 @@ function renderGrid(recipes) {
         ? `<img class="recipe-card-img" src="${recipe.photo}" alt="${recipe.title}" loading="lazy" />`
         : `<div class="recipe-card-img"></div>`}
       <div class="recipe-card-body">
-        <div class="recipe-card-meta">
-          <span class="tag cuisine">${recipe.cuisine}</span>
-          <span class="tag">${recipe.category}</span>
-          <span class="tag time">${formatTime(recipe.totalMinutes)}</span>
-        </div>
         <h2 class="recipe-card-title">${recipe.title}</h2>
-        <p class="recipe-card-desc">${recipe.description}</p>
+        <p class="recipe-card-tags">${recipe.cuisine}, ${recipe.category}, ${formatTime(recipe.totalMinutes)}</p>
       </div>
     </article>
   `).join('');
@@ -147,15 +142,22 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
+function syncFilterActive(id) {
+  document.getElementById(id).classList.toggle('active', document.getElementById(id).value !== '');
+}
+
 ['search', 'cuisine', 'time', 'category'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => renderGrid(getFiltered()));
+  document.getElementById(id).addEventListener('input', () => {
+    syncFilterActive(id);
+    renderGrid(getFiltered());
+  });
 });
 
 document.getElementById('clear-filters').addEventListener('click', () => {
-  document.getElementById('search').value = '';
-  document.getElementById('cuisine').value = '';
-  document.getElementById('time').value = '';
-  document.getElementById('category').value = '';
+  ['search', 'cuisine', 'time', 'category'].forEach(id => {
+    document.getElementById(id).value = '';
+    document.getElementById(id).classList.remove('active');
+  });
   renderGrid(allRecipes);
 });
 
