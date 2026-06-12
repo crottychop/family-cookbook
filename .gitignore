@@ -9,3 +9,6 @@ pictures/*.jpg
 !pictures/IMG_3976.JPG
 !pictures/IMG_8568.JPG
 !pictures/IMG_6257.JPG
+
+# Local-only folder of full-size original uploads (used to regenerate processed photos)
+jpg pictures/
