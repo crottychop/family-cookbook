@@ -1,139 +1,216 @@
 let allRecipes = [];
+let recById = {};
+let slugById = {};
+let idBySlug = {};
+let modalOpen = false;
+let currentRecipeId = null;
+let currentView = 'home';
 
+const VIEWS = ['home', 'recipes', 'reminisce'];
 const FILTER_IDS = ['search', 'cuisine', 'time', 'category'];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const noHover = window.matchMedia('(hover: none)');
 
-// ── Load data ──────────────────────────────────────────
+function withTransition(fn) {
+  if (typeof document.startViewTransition === 'function' && !reduceMotion.matches) {
+    return document.startViewTransition(fn);
+  }
+  fn();
+  return { finished: Promise.resolve(), ready: Promise.resolve() };
+}
+function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+// ── Load ───────────────────────────────────────────────
 async function loadRecipes() {
   const res = await fetch('data/recipes.json');
   allRecipes = await res.json();
+  allRecipes.forEach(r => {
+    recById[r.id] = r;
+    let s = slugify(r.title);
+    if (idBySlug[s] != null) s = `${s}-${r.id}`;
+    slugById[r.id] = s; idBySlug[s] = r.id;
+  });
+  // recipes view (reused filterable grid)
   populateFilters();
-  renderLatest();
-  renderFooterChips();
+  renderCategoryTabs();
   renderGrid(allRecipes);
+  renderActiveChips();
+  // home
+  preloadPhotos();
+  initHero();
+  // routing
+  initRoute();
 }
 
-// ── Card markup (shared: latest row + grid) ────────────
-function cardHTML(recipe) {
-  return `
-    <button class="recipe-card" data-id="${recipe.id}" aria-label="Open ${recipe.title}">
-      ${recipe.photo
-        ? `<img class="recipe-card-img" src="${recipe.photo}" alt="${recipe.title}" loading="lazy" />`
-        : `<div class="recipe-card-img"></div>`}
-      <span class="recipe-card-body">
-        <span class="recipe-card-title">${recipe.title}</span>
-        <span class="recipe-card-tags">${recipe.cuisine}, ${recipe.category} &middot; ${formatTime(recipe.totalMinutes)}</span>
-      </span>
-    </button>`;
+// ══ HOME: "Kain Tayo" card with a cursor image-trail ════
+// Bias the deck to the time of day, then the rest, shuffled.
+function timeOfDay() {
+  const h = new Date().getHours();
+  if (h < 5)  return { cat: 'Dessert' };
+  if (h < 11) return { cat: 'Breakfast' };
+  if (h < 15) return { cat: 'Soup' };
+  return { cat: 'Dinner' };
+}
+function buildDeck() {
+  const cat = timeOfDay().cat;
+  const inCat = shuffle(allRecipes.filter(r => r.category === cat)).map(r => r.id);
+  const rest  = shuffle(allRecipes.filter(r => r.category !== cat)).map(r => r.id);
+  return [...inCat, ...rest];
 }
 
-function wireCards(container) {
-  container.querySelectorAll('.recipe-card').forEach(card => {
-    card.addEventListener('click', () => openModal(parseInt(card.dataset.id)));
+const imgCache = {};
+function preloadPhotos() {
+  allRecipes.forEach(r => { if (r.photo) { const im = new Image(); im.src = r.photo; imgCache[r.id] = im; } });
+}
+
+// HOME = two layers over a full-bleed plum hero:
+//  • faint slideshow — photos cycling right-to-left at ~20% opacity, always
+//    (this is the idle state).
+//  • bright trail — big rounded photo tiles spawned along the cursor's path
+//    (Square-style), full opacity, fading oldest-first — only while moving.
+let deck = [];
+let slidePos = 0;
+let sliding = false;
+let trailIndex = 0;
+const IDLE_MS = 4500;     // gentle faint-photo crossfade interval
+const TRAIL_MAX = 9;      // max live trail tiles
+const randGap = () => 70 + Math.random() * 170;   // organic spacing: 70–240px
+
+function makeSlide(id) {
+  const img = document.createElement('img');
+  img.className = 'slide'; img.alt = '';
+  img.src = (imgCache[id] && imgCache[id].src) || recById[id].photo;
+  return img;
+}
+function advanceSlide() {
+  if (sliding) return;
+  const show = document.getElementById('slideshow');
+  if (!show) return;
+  const prev = show.lastElementChild;
+  slidePos = (slidePos + 1) % deck.length;
+  const next = makeSlide(deck[slidePos]);
+  next.classList.add('fade');             // start transparent
+  show.appendChild(next);
+  void next.offsetWidth;                  // reflow so the transition runs
+  sliding = true;
+  next.classList.remove('fade');          // → fade in
+  if (prev) prev.classList.add('fade');   // → fade out
+  setTimeout(() => { if (prev && prev.parentNode) prev.remove(); sliding = false; }, 1600);
+}
+function spawnTrail(layer, x, y) {
+  const id = deck[trailIndex % deck.length];
+  trailIndex++;
+  const img = document.createElement('img');
+  img.className = 'trail-img'; img.alt = '';
+  img.src = (imgCache[id] && imgCache[id].src) || recById[id].photo;
+  img.style.left = x + 'px';
+  img.style.top = y + 'px';
+  img.style.setProperty('--rot', (Math.random() * 10 - 5).toFixed(1) + 'deg');
+  layer.appendChild(img);
+  while (layer.children.length > TRAIL_MAX) layer.removeChild(layer.firstChild);
+  img.addEventListener('animationend', () => img.remove());
+}
+function initHero() {
+  deck = buildDeck();
+  const hero = document.getElementById('hero');
+  const show = document.getElementById('slideshow');
+  const layer = document.getElementById('trail-layer');
+  if (!hero || !show || !layer) return;
+  show.appendChild(makeSlide(deck[0]));        // faint background, first photo
+  if (reduceMotion.matches) return;            // static, no motion
+  setInterval(advanceSlide, IDLE_MS);          // faint cycling, always
+  // bright cursor trail with organic (randomized) spacing.
+  // While moving, the hero gets .moving (idle photos fade to black).
+  let lx = null, ly = null, acc = 0, nextGap = randGap(), idleTO = null;
+  hero.addEventListener('pointermove', e => {
+    const r = hero.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    hero.classList.add('moving');
+    clearTimeout(idleTO);
+    idleTO = setTimeout(() => hero.classList.remove('moving'), 450);
+    if (lx != null) acc += Math.hypot(x - lx, y - ly);
+    lx = x; ly = y;
+    if (acc < nextGap) return;
+    acc = 0; nextGap = randGap();
+    spawnTrail(layer, x + (Math.random() * 2 - 1) * 24, y + (Math.random() * 2 - 1) * 24);
   });
 }
 
-// ── Latest row (most recently added = highest id) ──────
-function renderLatest() {
-  const row = document.getElementById('latest-row');
-  const latest = [...allRecipes].sort((a, b) => b.id - a.id).slice(0, 6);
-  row.innerHTML = latest.map(cardHTML).join('');
-  wireCards(row);
+// ══ ROUTER ═══════════════════════════════════════════════
+function showView(name) {
+  if (!VIEWS.includes(name)) name = 'home';
+  currentView = name;
+  document.body.dataset.view = name;   // home hides the top bar (Mmm/Ahh cover nav)
+  VIEWS.forEach(v => { const el = document.getElementById('view-' + v); if (el) el.hidden = v !== name; });
+  document.querySelectorAll('.topbar-link[data-view]').forEach(l => l.classList.toggle('is-current', l.dataset.view === name));
+  window.scrollTo(0, 0);
 }
-
-// ── Populate filter dropdowns from data ────────────────
-function populateFilters() {
-  fillSelect('cuisine', [...new Set(allRecipes.map(r => r.cuisine))].sort());
-  fillSelect('category', [...new Set(allRecipes.map(r => r.category))].sort());
+function goView(name) {
+  const url = name === 'home' ? '#/' : '#/' + name;
+  history.pushState({ view: name }, '', url);
+  showView(name);
 }
-
-function fillSelect(id, values) {
-  const sel = document.getElementById(id);
-  values.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v;
-    opt.textContent = v;
-    sel.appendChild(opt);
-  });
+function initRoute() {
+  const h = location.hash;
+  const rec = h.match(/^#\/recipe\/(.+)$/);
+  if (rec && idBySlug[rec[1]] != null) {
+    showView('home');
+    history.replaceState({ view: 'home' }, '', '#/');
+    navigateToRecipe(idBySlug[rec[1]], null);
+  } else if (h === '#/recipes') { history.replaceState({ view: 'recipes' }, '', h); showView('recipes'); }
+  else if (h === '#/reminisce') { history.replaceState({ view: 'reminisce' }, '', h); showView('reminisce'); }
+  else { history.replaceState({ view: 'home' }, '', '#/'); showView('home'); }
 }
+document.querySelectorAll('[data-view]').forEach(b =>
+  b.addEventListener('click', e => { e.preventDefault(); goView(b.dataset.view); }));
 
-// ── Footer chips (cuisine / category) act as filters ───
-function renderFooterChips() {
-  const cuisines = [...new Set(allRecipes.map(r => r.cuisine))].sort();
-  const categories = [...new Set(allRecipes.map(r => r.category))].sort();
+window.addEventListener('popstate', e => {
+  const st = e.state || {};
+  if (st.recipe != null) { showRecipe(st.recipe, null); }
+  else { hideRecipe(); showView(st.view || 'home'); }
+});
 
-  document.getElementById('cuisine-chips').innerHTML =
-    cuisines.map(c => `<button class="chip" data-filter="cuisine" data-value="${c}">${c}</button>`).join('');
-  document.getElementById('category-chips').innerHTML =
-    categories.map(c => `<button class="chip" data-filter="category" data-value="${c}">${c}</button>`).join('');
-
-  document.querySelectorAll('.chip[data-filter]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const sel = document.getElementById(chip.dataset.filter);
-      // reset other filters for a clean focused view
-      FILTER_IDS.forEach(id => { document.getElementById(id).value = ''; });
-      sel.value = chip.dataset.value;
-      FILTER_IDS.forEach(syncFilterActive);
-      refreshClearBtn();
-      renderGrid(getFiltered());
-      scrollToId('all-recipes');
-    });
-  });
+// ══ RECIPE OVERLAY (history-routed + morph) ═════════════
+function navigateToRecipe(id, sourceImg) {
+  const url = `#/recipe/${slugById[id]}`;
+  const st = { recipe: id, view: currentView };
+  if (modalOpen) history.replaceState(st, '', url);
+  else history.pushState(st, '', url);
+  showRecipe(id, sourceImg);
 }
-
-// ── Filter logic ───────────────────────────────────────
-function getFiltered() {
-  const query    = document.getElementById('search').value.toLowerCase().trim();
-  const cuisine  = document.getElementById('cuisine').value;
-  const maxTime  = parseInt(document.getElementById('time').value) || Infinity;
-  const category = document.getElementById('category').value;
-
-  return allRecipes.filter(r => {
-    const matchesQuery = !query ||
-      r.title.toLowerCase().includes(query) ||
-      r.description.toLowerCase().includes(query) ||
-      r.ingredients.some(i => i.toLowerCase().includes(query));
-    return matchesQuery &&
-      (!cuisine  || r.cuisine === cuisine) &&
-      (r.totalMinutes <= maxTime) &&
-      (!category || r.category === category);
-  });
-}
-
-// ── Render grid ────────────────────────────────────────
-function renderGrid(recipes) {
-  const grid = document.getElementById('recipe-grid');
-  const count = document.getElementById('result-count');
-
-  count.textContent = recipes.length === allRecipes.length
-    ? `${recipes.length} recipes`
-    : `${recipes.length} of ${allRecipes.length}`;
-
-  if (recipes.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><p>No recipes match your filters.</p></div>`;
-    return;
-  }
-
-  grid.innerHTML = recipes.map(cardHTML).join('');
-  wireCards(grid);
-}
-
-function formatTime(minutes) {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-// ── Modal ──────────────────────────────────────────────
-function openModal(id) {
-  const recipe = allRecipes.find(r => r.id === id);
+function showRecipe(id, sourceImg) {
+  const recipe = recById[id];
   if (!recipe) return;
-
+  const modal = document.getElementById('recipe-modal');
+  if (sourceImg) sourceImg.style.viewTransitionName = 'recipe-hero';
+  const run = () => {
+    if (sourceImg) sourceImg.style.viewTransitionName = '';
+    renderModal(recipe);
+    if (!modal.open) modal.showModal();
+    modal.scrollTop = 0;
+  };
+  modalOpen = true; currentRecipeId = id;
+  withTransition(run);
+}
+function hideRecipe() {
+  const modal = document.getElementById('recipe-modal');
+  if (!modal.open) { modalOpen = false; currentRecipeId = null; return; }
+  const id = currentRecipeId;
+  let target = null;
+  const run = () => {
+    modal.close();
+    target = document.querySelector(`#recipe-grid .recipe-card[data-id="${id}"] .recipe-card-img`);
+    if (target) target.style.viewTransitionName = 'recipe-hero';
+  };
+  const t = withTransition(run);
+  t.finished.finally(() => { if (target) target.style.viewTransitionName = ''; });
+  modalOpen = false; currentRecipeId = null;
+}
+function renderModal(recipe) {
   const hasIngredients = recipe.ingredients && recipe.ingredients.length > 0;
   const hasInstructions = recipe.instructions && recipe.instructions.length > 0;
-  const hasNotes = recipe.notes &&
-    !recipe.notes.startsWith('Recipe to be filled in');
-
+  const hasNotes = recipe.notes && !recipe.notes.startsWith('Recipe to be filled in');
   document.getElementById('modal-content').innerHTML = `
     <div class="recipe-view">
       <div class="recipe-view-header">
@@ -145,9 +222,7 @@ function openModal(id) {
           ${recipe.serves ? `<span class="recipe-pill">Serves ${recipe.serves}</span>` : ''}
         </div>
       </div>
-
-      ${recipe.photo ? `<div class="recipe-gallery"><img src="${recipe.photo}" alt="${recipe.title}" /></div>` : ''}
-
+      ${recipe.photo ? `<div class="recipe-gallery"><img style="view-transition-name:recipe-hero" src="${recipe.photo}" alt="${recipe.title}" /></div>` : ''}
       <div class="recipe-view-body">
         <div>
           <div class="recipe-col-head"><h3>Ingredients</h3></div>
@@ -163,72 +238,117 @@ function openModal(id) {
             : `<p class="recipe-col-empty">Method coming soon.</p>`}
         </div>
       </div>
-
       ${hasNotes ? `<p class="recipe-view-notes">${recipe.notes}</p>` : ''}
     </div>`;
-
-  const modal = document.getElementById('recipe-modal');
-  modal.showModal();
-  modal.scrollTop = 0;
 }
 
-function closeModal() { document.getElementById('recipe-modal').close(); }
+const modalEl = document.getElementById('recipe-modal');
+document.getElementById('modal-close').addEventListener('click', () => history.back());
+document.getElementById('modal-back').addEventListener('click', () => history.back());
+modalEl.addEventListener('click', e => { if (e.target === modalEl) history.back(); });
+modalEl.addEventListener('cancel', e => { e.preventDefault(); history.back(); });
 
-document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('recipe-modal').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-// ── Filter wiring ──────────────────────────────────────
-function syncFilterActive(id) {
-  const el = document.getElementById(id);
-  el.classList.toggle('active', el.value !== '');
+// ══ FILTERS + GRID (recipes view) ═══════════════════════
+function cardHTML(recipe) {
+  return `
+    <button class="recipe-card" data-id="${recipe.id}" aria-label="Open ${recipe.title}">
+      ${recipe.photo
+        ? `<img class="recipe-card-img" src="${recipe.photo}" alt="${recipe.title}" loading="lazy" />`
+        : `<span class="recipe-card-img"></span>`}
+      <span class="recipe-card-body">
+        <span class="recipe-card-title">${recipe.title}</span>
+        <span class="recipe-card-tags">${recipe.cuisine}, ${recipe.category} &middot; ${formatTime(recipe.totalMinutes)}</span>
+      </span>
+    </button>`;
 }
-
-function anyFilterActive() {
-  return FILTER_IDS.some(id => document.getElementById(id).value !== '');
+function setGridCardNames(on) {
+  document.querySelectorAll('#recipe-grid .recipe-card').forEach(card => {
+    card.style.viewTransitionName = on ? `gcard-${card.dataset.id}` : '';
+  });
 }
-
-function refreshClearBtn() {
-  document.getElementById('clear-filters').hidden = !anyFilterActive();
+function wireCards(container) {
+  container.querySelectorAll('.recipe-card').forEach(card => {
+    card.addEventListener('click', () => navigateToRecipe(parseInt(card.dataset.id), card.querySelector('.recipe-card-img')));
+  });
 }
-
+function populateFilters() {
+  fillSelect('cuisine', [...new Set(allRecipes.map(r => r.cuisine))].sort());
+  fillSelect('category', [...new Set(allRecipes.map(r => r.category))].sort());
+}
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  values.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+}
+function renderCategoryTabs() {
+  const order = ['Breakfast', 'Soup', 'Dinner', 'Side', 'Dessert'];
+  const cats = [...new Set(allRecipes.map(r => r.category))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const el = document.getElementById('category-tabs');
+  el.innerHTML = ['', ...cats].map(c =>
+    `<button class="cat-tab${c === '' ? ' is-active' : ''}" role="tab" aria-selected="${c === ''}" data-cat="${c}">${c === '' ? 'All' : c}</button>`).join('');
+  el.querySelectorAll('.cat-tab').forEach(tab => tab.addEventListener('click', () => {
+    document.getElementById('category').value = tab.dataset.cat;
+    syncFilterActive('category'); applyFilters();
+  }));
+}
+function updateCategoryTabUI() {
+  const cur = document.getElementById('category').value;
+  document.querySelectorAll('.cat-tab').forEach(t => { const on = t.dataset.cat === cur; t.classList.toggle('is-active', on); t.setAttribute('aria-selected', on); });
+}
+const TIME_LABELS = { '30': 'Under 30 min', '60': 'Under 1 hr', '120': 'Under 2 hrs' };
+function renderActiveChips() {
+  const wrap = document.getElementById('active-chips');
+  const v = id => document.getElementById(id).value;
+  const parts = [];
+  if (v('category')) parts.push(['category', v('category')]);
+  if (v('cuisine')) parts.push(['cuisine', v('cuisine')]);
+  if (v('time')) parts.push(['time', TIME_LABELS[v('time')] || v('time')]);
+  if (v('search').trim()) parts.push(['search', `“${v('search').trim()}”`]);
+  let html = parts.map(([f, label]) => `<button class="chip chip-active" data-clear="${f}">${label} <span class="chip-x" aria-hidden="true">✕</span></button>`).join('');
+  if (parts.length >= 2) html += `<button class="chip chip-clear" data-clear="all">Clear all</button>`;
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('[data-clear]').forEach(c => c.addEventListener('click', () => clearFilter(c.dataset.clear)));
+}
+function clearFilter(which) {
+  (which === 'all' ? FILTER_IDS : [which]).forEach(id => { const el = document.getElementById(id); el.value = ''; el.classList.remove('active'); });
+  applyFilters();
+}
+function getFiltered() {
+  const query = document.getElementById('search').value.toLowerCase().trim();
+  const cuisine = document.getElementById('cuisine').value;
+  const maxTime = parseInt(document.getElementById('time').value) || Infinity;
+  const category = document.getElementById('category').value;
+  return allRecipes.filter(r => {
+    const mq = !query || r.title.toLowerCase().includes(query) || r.description.toLowerCase().includes(query) || r.ingredients.some(i => i.toLowerCase().includes(query));
+    return mq && (!cuisine || r.cuisine === cuisine) && (r.totalMinutes <= maxTime) && (!category || r.category === category);
+  });
+}
+function applyFilters() {
+  setGridCardNames(true);
+  const t = withTransition(() => { renderGrid(getFiltered()); renderActiveChips(); updateCategoryTabUI(); setGridCardNames(true); });
+  t.finished.finally(() => setGridCardNames(false));
+}
+function renderGrid(recipes) {
+  const grid = document.getElementById('recipe-grid');
+  const count = document.getElementById('result-count');
+  count.textContent = recipes.length === allRecipes.length ? `${recipes.length} recipes` : `${recipes.length} of ${allRecipes.length}`;
+  if (recipes.length === 0) { grid.innerHTML = `<div class="empty-state"><p>No recipes match your filters.</p></div>`; return; }
+  grid.innerHTML = recipes.map(cardHTML).join('');
+  wireCards(grid);
+}
+function formatTime(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+function syncFilterActive(id) { const el = document.getElementById(id); el.classList.toggle('active', el.value !== ''); }
 FILTER_IDS.forEach(id => {
-  document.getElementById(id).addEventListener('input', () => {
-    syncFilterActive(id);
-    refreshClearBtn();
-    renderGrid(getFiltered());
-  });
-});
-
-document.getElementById('clear-filters').addEventListener('click', () => {
-  FILTER_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    el.value = '';
-    el.classList.remove('active');
-  });
-  refreshClearBtn();
-  renderGrid(allRecipes);
-});
-
-// ── Smooth-scroll buttons (topbar, "See all", hero, chips) ──
-function scrollToId(id) {
   const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-document.querySelectorAll('[data-scroll]').forEach(btn => {
-  btn.addEventListener('click', () => scrollToId(btn.dataset.scroll));
+  if (el) el.addEventListener('input', () => { syncFilterActive(id); applyFilters(); });
 });
 
-// "Search" in the top bar jumps to filters and focuses the input
-document.getElementById('search-jump').addEventListener('click', () => {
-  setTimeout(() => document.getElementById('search').focus(), 400);
-});
-
-// ── Dismiss the floating Dispatch note ─────────────────
-document.getElementById('dispatch-close').addEventListener('click', () => {
-  document.getElementById('dispatch-float').hidden = true;
+// Dismiss the Father's Day note
+document.getElementById('dispatch-note-close')?.addEventListener('click', () => {
+  const n = document.getElementById('dispatch-note'); if (n) n.hidden = true;
 });
 
 // ── Init ───────────────────────────────────────────────

@@ -6,171 +6,104 @@
   <title>Seasoned</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=12" />
 </head>
 <body>
 
   <!-- ── Top bar ─────────────────────────────────────────── -->
   <header class="topbar">
-    <a class="topbar-brand" href="#top">🫙&nbsp; seasoned</a>
+    <a class="topbar-brand" href="#/" data-view="home">🫙&nbsp; seasoned</a>
     <nav class="topbar-nav" aria-label="Primary">
-      <button class="topbar-link" data-scroll="all-recipes">Recipes</button>
-      <button class="topbar-link" data-scroll="guides">Guides</button>
-      <button class="topbar-link" id="search-jump" data-scroll="all-recipes">Search</button>
+      <button class="topbar-link" data-view="recipes">recipes</button>
+      <button class="topbar-link" data-view="reminisce">reminisce</button>
     </nav>
   </header>
 
-  <!-- ── Wordmark slot ───────────────────────────────────── -->
-  <!-- LOGO GOES HERE: replace the <h1> below with your own logo (img/svg).
-       This mirrors cabagges.world's oversized logo slot. -->
-  <section class="wordmark-block" id="top">
-    <h1 class="wordmark">seasoned</h1>
-    <p class="wordmark-tag">Food is how we say I love you. This is where we keep the receipts.</p>
-  </section>
-
-  <!-- ── Latest Recipes ──────────────────────────────────── -->
-  <section class="section" id="latest">
-    <div class="section-head">
-      <h2 class="section-title">Latest Recipes</h2>
-      <button class="pill pill-ghost" data-scroll="all-recipes">See all &rarr;</button>
-    </div>
-
-    <div class="latest-wrap">
-      <div class="card-row" id="latest-row" aria-live="polite"><!-- rendered by app.js --></div>
-
-      <!-- Floating newsletter sticky-note -->
-      <form class="dispatch-float" id="dispatch-float" onsubmit="return false;">
-        <button type="button" class="dispatch-close" id="dispatch-close" aria-label="Dismiss">&#x2715;</button>
-        <p class="dispatch-title">Seasoned Dispatch</p>
-        <p class="dispatch-copy">A note now and then, when we add new recipes to the archive.</p>
-        <div class="dispatch-input">
-          <input type="email" placeholder="email address" aria-label="Email address" />
-          <button type="submit" class="pill pill-solid">Sign up</button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- ── Hero image band ─────────────────────────────────── -->
-  <section class="section">
-    <div class="hero-band">
-      <img src="pictures/IMG_0002.JPG" alt="The family table" loading="lazy" />
-      <button class="pill pill-solid hero-band-pill" data-scroll="all-recipes">Browse the family table &rarr;</button>
-    </div>
-  </section>
-
-  <!-- ── All recipes (filterable grid) ───────────────────── -->
-  <section class="section" id="all-recipes">
-    <div class="section-head">
-      <h2 class="section-title">All Recipes</h2>
-      <span class="result-count" id="result-count"></span>
-    </div>
-
-    <div class="filters" role="search">
-      <div class="filter-group filter-search">
-        <label for="search">Search</label>
-        <input type="text" id="search" placeholder="Search recipes or ingredients" />
-      </div>
-      <div class="filter-group">
-        <label for="cuisine">Cuisine</label>
-        <select id="cuisine"><option value="">All cuisines</option></select>
-      </div>
-      <div class="filter-group">
-        <label for="category">Category</label>
-        <select id="category"><option value="">All categories</option></select>
-      </div>
-      <div class="filter-group">
-        <label for="time">Cook time</label>
-        <select id="time">
-          <option value="">Any time</option>
-          <option value="30">Under 30 min</option>
-          <option value="60">Under 1 hr</option>
-          <option value="120">Under 2 hrs</option>
-        </select>
-      </div>
-      <button id="clear-filters" class="pill pill-ghost clear-btn" hidden>Clear &#x2715;</button>
-    </div>
-
-    <div class="recipe-grid" id="recipe-grid" aria-live="polite"><!-- rendered by app.js --></div>
-  </section>
-
-  <!-- ── Guides / stories (two-up) ───────────────────────── -->
-  <section class="section" id="guides">
-    <div class="guide-grid">
-      <article class="guide-card">
-        <div class="guide-img">
-          <img src="pictures/IMG_3976.JPG" alt="" loading="lazy" />
-          <span class="pill pill-solid guide-pill">Coming soon</span>
-        </div>
-        <h3 class="guide-title">Cook the Dish</h3>
-        <p class="guide-copy">Pick a recipe, drag the ingredients into the pot, and bring it to life. A little game to test how well you know your way around the kitchen.</p>
-      </article>
-
-      <article class="guide-card">
-        <div class="guide-img">
-          <img src="pictures/IMG_8568.JPG" alt="" loading="lazy" />
-          <span class="pill pill-solid guide-pill">Coming soon</span>
-        </div>
-        <h3 class="guide-title">Restaurant Memories</h3>
-        <p class="guide-copy">Every meal we've shared out in the world — the birthday dinners, the vacation spots, the random places that became traditions. Not reviews. Memories.</p>
-      </article>
-    </div>
-  </section>
-
-  <!-- ── Tall photo trio ─────────────────────────────────── -->
-  <section class="section">
-    <div class="photo-trio">
-      <div class="trio-item"><img src="pictures/processed/biryani-spread.jpg" alt="" loading="lazy" /></div>
-      <div class="trio-item"><img src="pictures/IMG_6257.JPG" alt="" loading="lazy" /></div>
-      <div class="trio-item"><img src="pictures/processed/steamed-crabs.jpg" alt="" loading="lazy" /></div>
-    </div>
-    <div class="trio-caption">
-      <p>Made with love. Seasoned with time. <span class="pill pill-ghost" data-scroll="all-recipes">Start cooking &rarr;</span></p>
-    </div>
-  </section>
-
-  <!-- ── Footer ──────────────────────────────────────────── -->
-  <footer class="footer">
-    <div class="footer-cols">
-      <div class="footer-col">
-        <p class="footer-head">Cuisines</p>
-        <div class="chip-list" id="cuisine-chips"><!-- rendered by app.js --></div>
-      </div>
-      <div class="footer-col">
-        <p class="footer-head">Categories</p>
-        <div class="chip-list" id="category-chips"><!-- rendered by app.js --></div>
-      </div>
-      <div class="footer-col">
-        <p class="footer-head">Sections</p>
-        <div class="chip-list">
-          <button class="chip" data-scroll="all-recipes">Recipes</button>
-          <button class="chip" data-scroll="guides">Guides</button>
-          <button class="chip" data-scroll="latest">Latest</button>
+  <!-- ══ HOME view — the "Kain Tayo" card (Square-style image trail) ═ -->
+  <main id="view-home" class="view view-home">
+    <section class="hero" id="hero">
+      <div class="slideshow" id="slideshow" aria-hidden="true"><!-- faint idle cycling photos --></div>
+      <div class="trail-layer" id="trail-layer" aria-hidden="true"><!-- bright cursor image-trail --></div>
+      <div class="hero-scrim" aria-hidden="true"></div>
+      <div class="hero-content">
+        <h1 class="hero-title">
+          <span>kain tayo</span>
+          <span>cholo khai</span>
+          <span>let's eat</span>
+        </h1>
+        <div class="hero-actions">
+          <button class="hero-btn hero-btn-light" data-view="recipes">Mmm</button>
+          <button class="hero-btn hero-btn-accent" data-view="reminisce">Ahh</button>
         </div>
       </div>
-      <div class="footer-col footer-col-wide">
-        <p class="footer-head">Seasoned Dispatch</p>
-        <p class="footer-copy">Sign up for the occasional note when we add new recipes to the family archive.</p>
-        <form class="footer-dispatch" onsubmit="return false;">
-          <input type="email" placeholder="email address" aria-label="Email address" />
-          <button type="submit" class="pill pill-solid">Sign up</button>
-        </form>
-      </div>
-    </div>
+      <p class="hero-byline">from the table of najeer, kate, &amp; appa</p>
 
-    <div class="botbar">
-      <a class="pill pill-ghost" href="mailto:hello@seasoned.family">hello@seasoned.family</a>
-      <span class="botbar-copy">&copy; Seasoned 2026</span>
-    </div>
-  </footer>
+      <aside class="dispatch-note" id="dispatch-note">
+        <button class="dispatch-note-close" id="dispatch-note-close" aria-label="Dismiss">&#x2715;</button>
+        <p class="dispatch-note-title">Happy Father's Day to the best dog daddy to Appa</p>
+        <p class="dispatch-note-copy">Thank you for cooking and sharing your love of food with me</p>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ══ RECIPES view — filterable grid (to be restyled next) ═ -->
+  <main id="view-recipes" class="view" hidden>
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">recipes</h2>
+        <span class="result-count" id="result-count"></span>
+      </div>
+
+      <div class="category-tabs" id="category-tabs" role="tablist" aria-label="Filter by category"><!-- app.js --></div>
+      <select id="category" hidden><option value="">All categories</option></select>
+
+      <div class="filters" role="search">
+        <div class="filter-group filter-search">
+          <label for="search">Search</label>
+          <input type="text" id="search" placeholder="Search recipes or ingredients" />
+        </div>
+        <div class="filter-group">
+          <label for="cuisine">Cuisine</label>
+          <select id="cuisine"><option value="">All cuisines</option></select>
+        </div>
+        <div class="filter-group">
+          <label for="time">Cook time</label>
+          <select id="time">
+            <option value="">Any time</option>
+            <option value="30">Under 30 min</option>
+            <option value="60">Under 1 hr</option>
+            <option value="120">Under 2 hrs</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="active-chips" id="active-chips" aria-live="polite"><!-- app.js --></div>
+      <div class="recipe-grid" id="recipe-grid" aria-live="polite"><!-- app.js --></div>
+    </section>
+  </main>
+
+  <!-- ══ REMINISCE view — placeholder for now ════════════════ -->
+  <main id="view-reminisce" class="view" hidden>
+    <section class="section reminisce">
+      <p class="zone-eyebrow">Reminisce</p>
+      <h2 class="reminisce-title">The meals we still talk about.</h2>
+      <p class="reminisce-copy">Every dinner out that became a story — the birthdays, the trips, the little spots that turned into traditions. We're still gathering the photos.</p>
+      <div class="polaroid-row">
+        <div class="polaroid"><span class="polaroid-photo"></span><span class="polaroid-cap">coming soon</span></div>
+        <div class="polaroid"><span class="polaroid-photo"></span><span class="polaroid-cap">coming soon</span></div>
+        <div class="polaroid"><span class="polaroid-photo"></span><span class="polaroid-cap">coming soon</span></div>
+      </div>
+    </section>
+  </main>
 
   <!-- ── Recipe modal ────────────────────────────────────── -->
   <dialog id="recipe-modal" aria-modal="true">
+    <button class="recipe-view-back" id="modal-back" aria-label="Back">&#8592;&nbsp; Back</button>
     <button class="recipe-view-close" id="modal-close" aria-label="Close">&#x2715;</button>
     <div id="modal-content"></div>
   </dialog>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=12"></script>
 </body>
 </html>

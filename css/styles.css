@@ -5,6 +5,8 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { height: 100%; }
+
 :root {
   --canvas:      #f6f3f1;   /* warm near-white page */
   --panel:       #efeae6;   /* image placeholder / subtle fill */
@@ -13,11 +15,11 @@
   --faint:       #b4a9ae;   /* tertiary */
   --rule:        #e6ded9;   /* hairlines */
 
-  --accent:      #a23b6c;   /* berry / plum */
-  --accent-deep: #87305a;   /* hover */
+  --accent:      #69140E;   /* deep brick red */
+  --accent-deep: #500f0a;   /* hover */
   --accent-ink:  #ffffff;   /* text on accent */
-  --accent-tint: #f2e4ec;   /* soft berry wash for chips */
-  --accent-tint-border: #e6cdda;
+  --accent-tint: #f4e3e1;   /* soft wash for chips */
+  --accent-tint-border: #e9cfcb;
 
   --r:    16px;
   --r-lg: 24px;
@@ -39,7 +41,18 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;            /* never let anything widen the page past the viewport */
+  /* Appa is the cursor 🐶 (retina-crisp via image-set, ~44px, hotspot centered) */
+  cursor: url("../pictures/appa-cursor.png?v=4") 25 24, auto;
+  cursor: -webkit-image-set(url("../pictures/appa-cursor.png?v=4") 1x, url("../pictures/appa-cursor-2x.png?v=4") 2x) 25 24, auto;
 }
+.topbar { flex-shrink: 0; }
+#search { cursor: text; }      /* normal text caret while typing a search */
+body[data-view="home"] .topbar { display: none; }   /* home is just the hero + Mmm/Ahh */
 
 img { display: block; max-width: 100%; }
 
@@ -153,9 +166,9 @@ img { display: block; max-width: 100%; }
 }
 
 .section-title {
-  font-size: clamp(1.1rem, 2.2vw, 1.45rem);
+  font-size: clamp(1.5rem, 3.2vw, 2.1rem);
   font-weight: 600;
-  letter-spacing: -.02em;
+  letter-spacing: -.035em;
   color: var(--ink);
 }
 
@@ -189,7 +202,7 @@ img { display: block; max-width: 100%; }
 }
 .recipe-card:hover .recipe-card-img,
 .recipe-card:focus-visible .recipe-card-img {
-  transform: translateY(-4px);
+  transform: translateY(-6px);   /* lift only — no scale, so corners stay crisp */
   box-shadow: var(--shadow);
 }
 
@@ -214,6 +227,10 @@ img { display: block; max-width: 100%; }
 }
 
 .recipe-card:focus-visible { outline: none; }
+.recipe-card:focus-visible .recipe-card-img {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+}
 
 /* ── Latest row (horizontal scroller) + floating note ──── */
 .latest-wrap { position: relative; }
@@ -224,13 +241,59 @@ img { display: block; max-width: 100%; }
   grid-auto-columns: minmax(230px, 1fr);
   gap: 1.5rem;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding-bottom: .25rem;
+  /* breathing room so the hover-lift + shadow aren't clipped by the scroller */
+  padding: 14px 2px 22px;
+  /* soft edge-fade so cards dissolve at the ends instead of a hard cut */
+  --fade: 32px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade), #000 calc(100% - var(--fade)), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 var(--fade), #000 calc(100% - var(--fade)), transparent 100%);
 }
+/* drop the fade on whichever end you've reached */
+.card-row.at-start {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - var(--fade)), transparent 100%);
+          mask-image: linear-gradient(to right, #000 0, #000 calc(100% - var(--fade)), transparent 100%);
+}
+.card-row.at-end {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade), #000 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 var(--fade), #000 100%);
+}
+.card-row.at-start.at-end { -webkit-mask-image: none; mask-image: none; }
 .card-row::-webkit-scrollbar { display: none; }
 .card-row .recipe-card { scroll-snap-align: start; }
+
+/* horizontal scroller arrow buttons */
+.row-nav {
+  position: absolute;
+  top: 36%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, .92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, color .15s, transform .12s;
+}
+.row-nav:hover { background: #fff; color: var(--accent); }
+.row-nav:active { transform: translateY(-50%) scale(.92); }
+.row-nav-prev { left: -.7rem; }
+.row-nav-next { right: -.7rem; }
+.row-nav[hidden] { display: none; }
+@media (hover: none), (max-width: 600px) { .row-nav { display: none; } }
 
 .dispatch-float {
   position: absolute;
@@ -309,9 +372,9 @@ img { display: block; max-width: 100%; }
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: .6rem;
+  gap: 1.1rem 1.75rem;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .filter-group { flex: 0 0 auto; }
@@ -327,37 +390,37 @@ img { display: block; max-width: 100%; }
 .filter-group input,
 .filter-group select {
   width: 100%;
-  border-radius: var(--pill);
-  border: 1.5px solid var(--rule);
-  background: var(--canvas);
-  padding: .55rem 1.1rem;
+  border: none;
+  border-bottom: 1.5px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  padding: .5rem .15rem;
   font: inherit;
-  font-size: .84rem;
+  font-size: .9rem;
   color: var(--ink);
   appearance: none;
   cursor: pointer;
   outline: none;
-  transition: background .16s, color .16s, border-color .16s;
+  transition: border-color .16s, color .16s;
 }
 .filter-group select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238d8186' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 1rem center;
-  padding-right: 2.4rem;
+  background-position: right .15rem center;
+  padding-right: 1.5rem;
 }
 .filter-group input::placeholder { color: var(--faint); }
 .filter-group input:focus,
-.filter-group select:focus { border-color: var(--accent); }
+.filter-group select:focus { border-bottom-color: var(--accent); }
 
 .filter-group input.active,
 .filter-group select.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
 }
-.filter-group input.active::placeholder { color: rgba(255,255,255,.75); }
 .filter-group select.active {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2369140E' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .clear-btn[hidden] { display: none; }
@@ -575,7 +638,12 @@ dialog#recipe-modal::backdrop { background: rgba(36,20,28,.55); }
   overflow: hidden;
   background: var(--panel);
 }
-.recipe-gallery img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+.recipe-gallery img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: var(--r-lg);  /* keep corners rounded through the morph */
+}
 
 .recipe-view-body {
   display: grid;
@@ -659,3 +727,441 @@ dialog#recipe-modal::backdrop { background: rgba(36,20,28,.55); }
   .recipe-card-title { font-size: .82rem; }
   .recipe-card-tags { font-size: .72rem; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Interaction layer — tabs, chips, zones, transitions
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Category tabs (primary filter) ────────────────────── */
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.cat-tab {
+  position: relative;
+  border: none;
+  background: none;
+  border-radius: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: .95rem;
+  font-weight: 500;
+  letter-spacing: -.01em;
+  text-transform: lowercase;
+  padding: .1rem 0 .8rem;
+  cursor: pointer;
+  transition: color .15s;
+}
+.cat-tab:hover { color: var(--ink); }
+.cat-tab.is-active { color: var(--accent); }
+.cat-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* ── Active-filter chips ───────────────────────────────── */
+.active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin: 0 0 1.75rem;
+}
+.active-chips:empty { margin: 0; }
+.chip-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.chip-active:hover {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: #fff;
+}
+.chip-x { font-size: .9em; opacity: .85; margin-left: .1em; }
+.chip-clear {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+}
+.chip-clear:hover {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ── In-overlay Back button ────────────────────────────── */
+.recipe-view-back {
+  position: fixed;
+  top: 1.25rem;
+  left: 1.5rem;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--rule);
+  border-radius: var(--pill);
+  padding: .5rem 1rem .5rem .9rem;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.recipe-view-back:hover { color: var(--accent); border-color: var(--accent); }
+
+/* branded focus for the modal buttons (replaces the UA blue ring on open) */
+.recipe-view-back:focus,
+.recipe-view-close:focus { outline: none; }
+.recipe-view-back:focus-visible,
+.recipe-view-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+/* ── Tinted section zone (Guides) ──────────────────────── */
+.zone-band { background: var(--accent-tint); }
+.zone-head { margin-bottom: 2rem; }
+.zone-eyebrow {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: .35rem;
+}
+
+/* ── Top-bar scroll-spy indicator ──────────────────────── */
+.topbar-link { position: relative; }
+.topbar-link.is-current { color: var(--accent); }
+.topbar-link.is-current::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ── View Transitions (gated to motion-OK users) ───────── */
+@media (prefers-reduced-motion: no-preference) {
+  /* The photo is the only thing that moves on open/close: it morphs from
+     the tapped card into the recipe hero (and back). */
+  ::view-transition-group(recipe-hero) {
+    animation-duration: .4s;
+    animation-timing-function: cubic-bezier(.2, .7, .2, 1);
+    z-index: 20;                 /* stay above the background swap */
+  }
+  /* Background cuts instantly — no slow root cross-fade, so the previous
+     grid never ghosts through the opening recipe. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  /* When filtering, cards reflow/fade smoothly (each has its own name). */
+  ::view-transition-group(*) {
+    animation-duration: .34s;
+    animation-timing-function: cubic-bezier(.2, .7, .2, 1);
+  }
+}
+
+/* ── Reduced motion: strip animation everywhere ────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .recipe-view-back { top: 1rem; left: 1rem; padding: .45rem .85rem; font-size: .78rem; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Landing redesign — "living recipe counter"
+   ══════════════════════════════════════════════════════════ */
+
+[hidden] { display: none !important; }
+
+/* ── Views ─────────────────────────────────────────────── */
+.view { width: 100%; }
+.view-home {
+  min-height: calc(100dvh - 3.4rem);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Home head (greeting + brand + shuffle) ────────────── */
+.home-head {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: clamp(.9rem, 3vh, 2rem) var(--pad) .4rem;
+}
+.greet {
+  font-size: .85rem;
+  color: var(--muted);
+  letter-spacing: .01em;
+  margin-bottom: .45rem;
+}
+.home-wordmark {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: var(--accent);
+}
+.home-tag {
+  font-size: .9rem;
+  color: var(--muted);
+  margin-top: .55rem;
+}
+.shuffle-btn {
+  background: none; border: none; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 600;
+  color: var(--accent); padding: .1rem .25rem;
+}
+.shuffle-btn:hover { text-decoration: underline; }
+
+/* ── Counter (scattered tile wall) ─────────────────────── */
+.counter-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.counter { position: absolute; inset: 0; }
+.icon-layer { position: absolute; inset: 0; pointer-events: none; z-index: 1000; }
+
+.tile {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  border: none; padding: 0; margin: 0; background: none;
+  cursor: pointer;
+  transition: transform .28s cubic-bezier(.2, .7, .2, 1);
+  will-change: transform;
+}
+.tile-img {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 8px 22px -12px rgba(60, 25, 40, .45);
+  transition: box-shadow .25s;
+}
+/* lift + straighten on hover/focus — no scale, so corners stay crisp */
+.tile:hover, .tile:focus-visible {
+  transform: translate(-50%, calc(-50% - 9px)) rotate(0deg);
+  z-index: 900 !important;
+}
+.tile:hover .tile-img, .tile:focus-visible .tile-img { box-shadow: var(--shadow); }
+.tile:focus-visible { outline: none; }
+.tile:focus-visible .tile-img { outline: 2.5px solid var(--accent); outline-offset: 3px; }
+
+.tile-cap {
+  position: absolute;
+  left: .4rem; right: .4rem; bottom: .45rem;
+  text-align: center; line-height: 1.2;
+  font-size: .7rem; font-weight: 600; color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .65);
+  opacity: 0; transition: opacity .15s;
+  pointer-events: none;
+}
+.tile.peek .tile-cap { opacity: 1; }
+
+/* ── Home links ────────────────────────────────────────── */
+.home-links {
+  flex: 0 0 auto;
+  display: flex; gap: .7rem; justify-content: center;
+  padding: .7rem var(--pad) clamp(1rem, 3vh, 1.6rem);
+}
+
+/* ── Reminisce placeholder ─────────────────────────────── */
+.reminisce { text-align: center; max-width: 760px; margin: 0 auto; padding-top: clamp(2rem, 6vh, 4rem); }
+.reminisce-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 700; letter-spacing: -.02em; margin: .4rem 0 .9rem; }
+.reminisce-copy { color: var(--muted); line-height: 1.7; margin: 0 auto 2.5rem; max-width: 48ch; }
+.polaroid-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+.polaroid {
+  background: #fff; padding: .55rem .55rem 1.5rem; border-radius: 3px;
+  box-shadow: var(--shadow); transform: rotate(var(--r, -2deg));
+}
+.polaroid:nth-child(2) { --r: 1.6deg; }
+.polaroid:nth-child(3) { --r: -1deg; }
+.polaroid-photo { display: block; width: 160px; height: 130px; background: var(--panel); border-radius: 2px; }
+.polaroid-cap { display: block; margin-top: .55rem; font-size: .72rem; color: var(--faint); letter-spacing: .04em; text-transform: uppercase; }
+
+/* ── Touch / reduced motion: calm static wall ──────────── */
+@media (hover: none) {
+  .tile:hover { transform: translate(-50%, -50%) rotate(var(--rot, 0deg)); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Home v2 — "Kain Tayo" card (Square-style image trail)
+   ══════════════════════════════════════════════════════════ */
+.view-home { display: flex; flex-direction: column; flex: 1 1 auto; padding: 0; }
+
+/* full-bleed black hero — flexes to fill whatever space is left below the
+   top bar, so it always adapts on resize (no hardcoded topbar height) */
+.hero {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #060606;
+}
+
+/* idle photos crossfading at 40%; while the cursor moves they drop to black
+   so you never see the idle photos and the cursor tiles at the same time */
+.slideshow { position: absolute; inset: 0; overflow: hidden; z-index: 1; opacity: .4; transition: opacity .6s ease; }
+.hero.moving .slideshow { opacity: .1; }   /* faint photo ghost behind the full-opacity cursor tiles */
+.slide {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  transition: opacity 1.5s ease;
+  will-change: opacity;
+}
+.slide.fade { opacity: 0; }
+
+/* bright cursor image-trail (Square-style) — small square tiles that follow
+   the cursor and fade out oldest-first */
+.trail-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.trail-img {
+  position: absolute;
+  width: clamp(80px, 8vw, 150px);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, .7);
+  animation: trail 1050ms ease forwards;
+  will-change: transform, opacity;
+}
+@keyframes trail {
+  0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scale(.84); }
+  14%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); }
+  66%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); }
+}
+
+/* scrim keeps the headline readable over the photos */
+.hero-scrim {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: radial-gradient(60% 50% at 50% 47%, rgba(0, 0, 0, .55), rgba(0, 0, 0, .12) 70%, transparent);
+}
+
+/* vertical byline down the far-left edge (reads bottom-to-top) */
+.hero-byline {
+  position: absolute;
+  left: clamp(.7rem, 2vw, 1.7rem);
+  top: 0; bottom: 0;
+  margin: auto 0;
+  height: max-content;
+  z-index: 5;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: .18em;
+  color: rgba(255, 255, 255, .55);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+
+/* Father's Day note — slanted, gently wiggling sticky-note, top-right of the hero */
+.dispatch-note {
+  position: absolute;
+  top: clamp(5rem, 30vh, 17rem);
+  left: 72%;                 /* nearer the headline */
+  z-index: 6;
+  width: min(310px, 74vw);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 18px;
+  padding: 1.05rem 1.2rem 1.15rem;
+  box-shadow: 0 20px 46px -18px rgba(0, 0, 0, .55);
+  transform: translateX(-50%) rotate(4deg);
+  animation: note-wiggle 2.8s ease-in-out infinite;
+}
+@keyframes note-wiggle {
+  0%, 100% { transform: translateX(-50%) rotate(3deg); }
+  50%      { transform: translateX(-50%) rotate(6deg); }
+}
+.dispatch-note-title {
+  font-weight: 700;
+  font-size: .98rem;
+  line-height: 1.3;
+  letter-spacing: -.01em;
+  margin-bottom: .5rem;
+  padding-right: .9rem;
+}
+.dispatch-note-copy {
+  font-weight: 400;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, .9);
+}
+.dispatch-note-close {
+  position: absolute;
+  top: .5rem; right: .6rem;
+  background: none; border: none;
+  color: rgba(255, 255, 255, .65);
+  font-size: .78rem; line-height: 1;
+  cursor: pointer;
+}
+.dispatch-note-close:hover { color: #fff; }
+.dispatch-note[hidden] { display: none; }
+
+/* centered text + buttons */
+.hero-content {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 2rem;
+  pointer-events: none;
+}
+.hero-content > * { pointer-events: auto; }
+.hero-title {
+  display: flex; flex-direction: column; align-items: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.1rem, 8vmin, 4.6rem);
+  line-height: .98;
+  letter-spacing: -.03em;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, .5);
+}
+.hero-title span { display: block; }
+.hero-title span:nth-child(1) { opacity: .5; }    /* kain tayo — most gray */
+.hero-title span:nth-child(2) { opacity: .72; }   /* cholo khai — mid */
+/* let's eat (3rd line) stays full white */
+.hero-actions { display: flex; gap: .8rem; margin-top: 1.7rem; }
+.hero-btn {
+  border: none; border-radius: 999px;
+  padding: .72rem 1.9rem;
+  font: inherit; font-weight: 600; font-size: 1rem;
+  cursor: pointer;
+  transition: transform .12s ease, background .15s, color .15s;
+}
+.hero-btn:active { transform: scale(.95); }
+.hero-btn-light { background: #fff; color: var(--accent-deep); }
+.hero-btn-light:hover { color: var(--accent); }
+.hero-btn-accent { background: var(--accent); color: #fff; }
+.hero-btn-accent:hover { background: var(--accent-deep); }
