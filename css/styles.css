@@ -1130,6 +1130,10 @@ dialog#recipe-modal::backdrop { background: rgba(36,20,28,.55); }
 }
 .dispatch-note-close:hover { color: #fff; }
 .dispatch-note[hidden] { display: none; }
+/* mobile: center the note at the top so it doesn't crowd the headline */
+@media (max-width: 600px) {
+  .dispatch-note { left: 50%; top: 1.25rem; width: min(300px, 86vw); }
+}
 
 /* centered text + buttons */
 .hero-content {
