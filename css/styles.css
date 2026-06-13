@@ -1089,8 +1089,8 @@ dialog#recipe-modal::backdrop { background: rgba(36,20,28,.55); }
 /* Father's Day note — slanted, gently wiggling sticky-note, top-right of the hero */
 .dispatch-note {
   position: absolute;
-  top: clamp(5rem, 30vh, 17rem);
-  left: 72%;                 /* nearer the headline */
+  top: clamp(4rem, 23vh, 15rem);
+  left: 67%;                 /* nearer the headline, a touch higher */
   z-index: 6;
   width: min(310px, 74vw);
   background: var(--accent);
